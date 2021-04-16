@@ -1,21 +1,19 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Diagnostics;
+﻿using System.Diagnostics;
 using System.Net;
 using System.Net.Sockets;
 using System.Threading;
 
 namespace Chesham.Sockets
 {
+    using SystemSocket = System.Net.Sockets.Socket;
+
     public class SocketServer : Socket
     {
-        private HashSet<SocketAsyncEventArgs> socketEvents = new HashSet<SocketAsyncEventArgs>();
-
         private int bufferSize = 8192;
 
         public void Listen(EndPoint endPoint, CancellationToken cancelToken)
         {
-            var socket = new System.Net.Sockets.Socket(SocketType.Stream, ProtocolType.Tcp);
+            var socket = new SystemSocket(SocketType.Stream, ProtocolType.Tcp);
             socket.Bind(endPoint);
             socket.Listen();
             var socketAsyncEvent = new SocketAsyncEventArgs();
@@ -46,13 +44,12 @@ namespace Chesham.Sockets
                 {
                     OnSocketCompleted(sender, socketAsyncEvent);
                 }
-                socketEvents.Add(e);
             }
             else
             {
                 acceptedSocket.Dispose();
             }
-            var listenSocket = e.UserToken as System.Net.Sockets.Socket;
+            var listenSocket = e.UserToken as SystemSocket;
             if (!listenSocket.AcceptAsync(e))
             {
                 OnSocketAccepted(sender, e);
@@ -61,7 +58,7 @@ namespace Chesham.Sockets
 
         private void OnSocketCompleted(object sender, SocketAsyncEventArgs e)
         {
-            var socket = e.UserToken as System.Net.Sockets.Socket;
+            var socket = e.UserToken as SystemSocket;
             switch (e.LastOperation)
             {
                 case SocketAsyncOperation.Receive:
