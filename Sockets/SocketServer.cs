@@ -9,7 +9,7 @@ namespace Chesham.Sockets
 
     public class SocketServer : Socket
     {
-        public void Listen(EndPoint endPoint, CancellationToken cancelToken)
+        public void Listen(EndPoint endPoint, CancellationToken cancellationToken = default)
         {
             var socket = new SystemSocket(SocketType.Stream, ProtocolType.Tcp);
             socket.Bind(endPoint);

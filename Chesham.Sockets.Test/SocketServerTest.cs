@@ -28,10 +28,7 @@ namespace Chesham.Sockets.Test
                         if (e_ is OnSocketReceived)
                         {
                             var e = e_ as OnSocketReceived;
-                            lock (receiveBuffers)
-                            {
-                                receiveBuffers.Add(e.buffer);
-                            }
+                            receiveBuffers.Add(e.buffer);
                         }
                     };
                     connections.Add(e.connection);
@@ -39,14 +36,14 @@ namespace Chesham.Sockets.Test
                 }
             };
             var endPoint = randomIPEndPoint;
-            server.Listen(endPoint, default);
+            server.Listen(endPoint);
             var clients = Enumerable.Range(0, totalClientCount)
                 .Select(i => new TcpClient(endPoint.Address.ToString(), endPoint.Port))
                 .Select(async client =>
                 {
                     using (client)
                     {
-                        await client.GetStream().WriteAsync(payloadBytes, default);
+                        await client.GetStream().WriteAsync(payloadBytes);
                     }
                 })
                 .ToArray();
@@ -74,7 +71,7 @@ namespace Chesham.Sockets.Test
                 }
             };
             var endPoint = randomIPEndPoint;
-            server.Listen(endPoint, default);
+            server.Listen(endPoint);
             using (var client = new TcpClient(endPoint.Address.ToString(), endPoint.Port))
             {
                 var connection = await connectionTask.Task;
@@ -82,6 +79,36 @@ namespace Chesham.Sockets.Test
                 var readTask = client.GetStream().ReadAsync(receivedBytes);
                 Assert.AreEqual(payloadBytes.Length, await connection.SendAsync(payloadBytes));
                 Assert.IsTrue(payloadBytes.SequenceEqual(receivedBytes));
+            }
+        }
+
+        [TestMethod]
+        public async Task TestSendMultiple()
+        {
+            var connectionTask = new TaskCompletionSource<SocketConnection>();
+            var server = new SocketServer();
+            server.OnEvent += (_, e_) =>
+            {
+                if (e_ is OnSocketAccepted)
+                {
+                    var e = e_ as OnSocketAccepted;
+                    e.isAccept = true;
+                    connectionTask.SetResult(e.connection);
+                }
+            };
+            var endPoint = randomIPEndPoint;
+            server.Listen(endPoint);
+            using (var client = new TcpClient(endPoint.Address.ToString(), endPoint.Port))
+            {
+                var connection = await connectionTask.Task;
+                var testTimes = 10;
+                for (var i = 0; i < testTimes; ++i)
+                {
+                    var receivedBytes = new byte[payloadBytes.Length];
+                    var readTask = client.GetStream().ReadAsync(receivedBytes);
+                    Assert.AreEqual(payloadBytes.Length, await connection.SendAsync(payloadBytes));
+                    Assert.IsTrue(payloadBytes.SequenceEqual(receivedBytes));
+                }
             }
         }
     }
