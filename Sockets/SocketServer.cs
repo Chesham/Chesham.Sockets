@@ -25,6 +25,23 @@ namespace Chesham.Sockets
             }
         }
 
+        protected bool OnAccept(SystemSocket acceptedSocket)
+        {
+            var e = new OnSocketAccepted
+            {
+                socket = acceptedSocket
+            };
+            try
+            {
+                InvokeEvent(this, e);
+                return e.isAccept;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
         private void OnSocketAccepted(object sender, SocketAsyncEventArgs e)
         {
             Debug.Assert(e.LastOperation == SocketAsyncOperation.Accept);
@@ -53,35 +70,6 @@ namespace Chesham.Sockets
             if (!listenSocket.AcceptAsync(e))
             {
                 OnSocketAccepted(sender, e);
-            }
-        }
-
-        private void OnSocketCompleted(object sender, SocketAsyncEventArgs e)
-        {
-            var socket = e.UserToken as SystemSocket;
-            switch (e.LastOperation)
-            {
-                case SocketAsyncOperation.Receive:
-                    if (e.BytesTransferred > 0 && e.SocketError == SocketError.Success)
-                    {
-                        OnReceive(e.MemoryBuffer.Slice(e.Offset, e.BytesTransferred).ToArray());
-                        if (!socket.ReceiveAsync(e))
-                        {
-                            OnSocketCompleted(sender, e);
-                        }
-                    }
-                    else
-                    {
-                        socket.Dispose();
-                    }
-                    break;
-                case SocketAsyncOperation.Send:
-                    break;
-                case SocketAsyncOperation.Disconnect:
-                    break;
-                default:
-                    Debug.Assert(false, "Unexpect operation occured");
-                    break;
             }
         }
     }

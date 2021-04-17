@@ -1,26 +1,18 @@
 ﻿using System;
+using System.Diagnostics;
+using System.Net.Sockets;
 
 namespace Chesham.Sockets
 {
+    using SystemSocket = System.Net.Sockets.Socket;
+
     public abstract class Socket
     {
         public event EventHandler<SocketClientEvent> OnEvent;
 
-        protected bool OnAccept(System.Net.Sockets.Socket acceptedSocket)
+        protected void InvokeEvent(object sender, SocketClientEvent e)
         {
-            var e = new OnSocketAccepted
-            {
-                socket = acceptedSocket
-            };
-            try
-            {
-                OnEvent?.Invoke(this, e);
-                return e.isAccept;
-            }
-            catch
-            {
-                return false;
-            }
+            OnEvent?.Invoke(sender, e);
         }
 
         protected void OnReceive(byte[] buffer)
@@ -35,6 +27,35 @@ namespace Chesham.Sockets
             }
             catch
             {
+            }
+        }
+
+        protected void OnSocketCompleted(object sender, SocketAsyncEventArgs e)
+        {
+            var socket = e.UserToken as SystemSocket;
+            switch (e.LastOperation)
+            {
+                case SocketAsyncOperation.Receive:
+                    if (e.BytesTransferred > 0 && e.SocketError == SocketError.Success)
+                    {
+                        OnReceive(e.MemoryBuffer.Slice(e.Offset, e.BytesTransferred).ToArray());
+                        if (!socket.ReceiveAsync(e))
+                        {
+                            OnSocketCompleted(sender, e);
+                        }
+                    }
+                    else
+                    {
+                        socket.Dispose();
+                    }
+                    break;
+                case SocketAsyncOperation.Send:
+                    break;
+                case SocketAsyncOperation.Disconnect:
+                    break;
+                default:
+                    Debug.Assert(false, "Unexpect operation occured");
+                    break;
             }
         }
     }
