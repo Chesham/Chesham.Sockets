@@ -4,8 +4,6 @@ using System.Net.Sockets;
 
 namespace Chesham.Sockets
 {
-    using SystemSocket = System.Net.Sockets.Socket;
-
     public abstract class Socket
     {
         public event EventHandler<SocketClientEvent> OnEvent;
@@ -32,13 +30,23 @@ namespace Chesham.Sockets
 
         protected void OnSocketCompleted(object sender, SocketAsyncEventArgs e)
         {
-            var socket = e.UserToken as SystemSocket;
+            var connection = e.UserToken as SocketConnection;
+            Debug.Assert(connection != null);
+            if (connection == null)
+                return;
+            var socket = connection.socket;
+            Debug.Assert(socket != null);
+            if (socket == null)
+                return;
             switch (e.LastOperation)
             {
                 case SocketAsyncOperation.Receive:
                     if (e.BytesTransferred > 0 && e.SocketError == SocketError.Success)
                     {
-                        OnReceive(e.MemoryBuffer.Slice(e.Offset, e.BytesTransferred).ToArray());
+                        connection.OnEvent?.Invoke(connection, new OnSocketReceived
+                        {
+                            buffer = e.MemoryBuffer.Slice(e.Offset, e.BytesTransferred).ToArray()
+                        });
                         if (!socket.ReceiveAsync(e))
                         {
                             OnSocketCompleted(sender, e);
@@ -58,5 +66,7 @@ namespace Chesham.Sockets
                     break;
             }
         }
+
+        protected int bufferSize = 8192;
     }
 }

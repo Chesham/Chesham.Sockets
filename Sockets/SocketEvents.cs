@@ -11,7 +11,7 @@ namespace Chesham.Sockets
 
     public class OnSocketAccepted : SocketClientEvent
     {
-        public System.Net.Sockets.Socket socket { get; internal set; }
+        public SocketConnection connection { get; internal set; }
 
         public bool isAccept { get; set; } = false;
     }

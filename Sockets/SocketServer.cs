@@ -9,8 +9,6 @@ namespace Chesham.Sockets
 
     public class SocketServer : Socket
     {
-        private int bufferSize = 8192;
-
         public void Listen(EndPoint endPoint, CancellationToken cancelToken)
         {
             var socket = new SystemSocket(SocketType.Stream, ProtocolType.Tcp);
@@ -25,16 +23,25 @@ namespace Chesham.Sockets
             }
         }
 
-        protected bool OnAccept(SystemSocket acceptedSocket)
+        protected bool OnAccept(SystemSocket acceptedSocket, out OnSocketAccepted acceptedEvent)
         {
+            acceptedEvent = default;
             var e = new OnSocketAccepted
             {
-                socket = acceptedSocket
+                connection = new SocketConnection
+                {
+                    socket = acceptedSocket
+                }
             };
             try
             {
                 InvokeEvent(this, e);
-                return e.isAccept;
+                if (e.isAccept)
+                {
+                    acceptedEvent = e;
+                    return true;
+                }
+                return false;
             }
             catch
             {
@@ -49,11 +56,11 @@ namespace Chesham.Sockets
                 return;
             var acceptedSocket = e.AcceptSocket;
             e.AcceptSocket = null;
-            if (OnAccept(acceptedSocket))
+            if (OnAccept(acceptedSocket, out var acceptedEvent))
             {
                 var socketAsyncEvent = new SocketAsyncEventArgs
                 {
-                    UserToken = acceptedSocket
+                    UserToken = acceptedEvent.connection
                 };
                 socketAsyncEvent.Completed += OnSocketCompleted;
                 socketAsyncEvent.SetBuffer(new byte[bufferSize]);
