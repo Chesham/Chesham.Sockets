@@ -11,7 +11,7 @@ using System.Threading.Tasks;
 namespace Chesham.Sockets.Test
 {
     [TestClass]
-    public class SocketServerTest
+    public class SocketServerTest : TestContext
     {
         [TestMethod]
         public void TestListen()
@@ -19,7 +19,6 @@ namespace Chesham.Sockets.Test
             var server = new SocketServer();
             var cts = new CancellationTokenSource();
             var totalClientCount = 100;
-            var buffer = Encoding.UTF8.GetBytes("Hello World");
             var receiveBuffers = new List<byte[]>();
             server.OnEvent += (_, e_) =>
             {
@@ -41,15 +40,15 @@ namespace Chesham.Sockets.Test
                     }
                 }
             };
-            var endPoint = new IPEndPoint(IPAddress.Any, 80);
+            var endPoint = randomIPEndPoint;
             server.Listen(endPoint, cts.Token);
             var clients = Enumerable.Range(0, totalClientCount)
-                .Select(i => new TcpClient("127.0.0.1", 80))
+                .Select(i => new TcpClient(endPoint.Address.ToString(), endPoint.Port))
                 .Select(async client =>
                 {
                     using (client)
                     {
-                        await client.GetStream().WriteAsync(buffer, cts.Token);
+                        await client.GetStream().WriteAsync(payloadBytes, cts.Token);
                     }
                 })
                 .ToArray();
@@ -58,7 +57,34 @@ namespace Chesham.Sockets.Test
             Assert.AreEqual(totalClientCount, receiveBuffers.Count());
             foreach (var receiveBuffer in receiveBuffers)
             {
-                Assert.IsTrue(buffer.SequenceEqual(receiveBuffer));
+                Assert.IsTrue(payloadBytes.SequenceEqual(receiveBuffer));
+            }
+        }
+
+        [TestMethod]
+        public async Task TestSend()
+        {
+            var socketTask = new TaskCompletionSource<System.Net.Sockets.Socket>();
+            var server = new SocketServer();
+            server.OnEvent += (_, e_) =>
+            {
+                if (e_ is OnSocketAccepted)
+                {
+                    var e = e_ as OnSocketAccepted;
+                    e.isAccept = true;
+                    socketTask.SetResult(e.socket);
+                }
+            };
+            var cts = new CancellationTokenSource();
+            var endPoint = randomIPEndPoint;
+            server.Listen(endPoint, cts.Token);
+            using (var client = new TcpClient(endPoint.Address.ToString(), endPoint.Port))
+            {
+                var socket = await socketTask.Task;
+                var receivedBytes = new byte[payloadBytes.Length];
+                var readTask = client.GetStream().ReadAsync(receivedBytes);
+                Assert.AreEqual(payloadBytes.Length, await socket.SendAsync(payloadBytes, SocketFlags.None));
+                Assert.IsTrue(payloadBytes.SequenceEqual(receivedBytes));
             }
         }
     }
