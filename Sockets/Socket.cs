@@ -45,6 +45,7 @@ namespace Chesham.Sockets
                     {
                         connection.OnEvent?.Invoke(connection, new OnSocketReceived
                         {
+                            connection = connection,
                             buffer = e.MemoryBuffer.Slice(e.Offset, e.BytesTransferred).ToArray()
                         });
                         if (!socket.ReceiveAsync(e))

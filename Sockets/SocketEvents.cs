@@ -18,6 +18,8 @@ namespace Chesham.Sockets
 
     public class OnSocketReceived : SocketClientEvent
     {
+        public SocketConnection connection { get; internal set; }
+
         public byte[] buffer { get; internal set; }
     }
 

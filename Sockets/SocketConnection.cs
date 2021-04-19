@@ -27,6 +27,16 @@ namespace Chesham.Sockets
             var socket = new System.Net.Sockets.Socket(SocketType.Stream, ProtocolType.Tcp);
             await socket.ConnectAsync(endPoint, cancellationToken);
             this.socket = socket;
+            var socketEventArgs = new SocketAsyncEventArgs
+            {
+                UserToken = this,
+            };
+            socketEventArgs.Completed += OnSocketCompleted;
+            socketEventArgs.SetBuffer(new byte[bufferSize]);
+            if (!socket.ReceiveAsync(socketEventArgs))
+            {
+                OnSocketCompleted(this, socketEventArgs);
+            }
         }
 
         ~SocketConnection()
