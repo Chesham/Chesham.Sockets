@@ -6,7 +6,9 @@ namespace Chesham.Sockets
 {
     public abstract class Socket
     {
-        public event EventHandler<SocketClientEvent> OnEvent;
+        public virtual event EventHandler<SocketClientEvent> OnEvent;
+
+        protected bool hasEvents => OnEvent != null;
 
         protected void InvokeEvent(object sender, SocketClientEvent e)
         {
@@ -43,7 +45,7 @@ namespace Chesham.Sockets
                 case SocketAsyncOperation.Receive:
                     if (e.BytesTransferred > 0 && e.SocketError == SocketError.Success)
                     {
-                        connection.OnEvent?.Invoke(connection, new OnSocketReceived
+                        (connection as Socket).OnEvent?.Invoke(connection, new OnSocketReceived
                         {
                             connection = connection,
                             buffer = e.MemoryBuffer.Slice(e.Offset, e.BytesTransferred).ToArray()

@@ -8,6 +8,22 @@ namespace Chesham.Sockets
 {
     public class SocketConnection : Socket
     {
+        public override event EventHandler<SocketClientEvent> OnEvent
+        {
+            add
+            {
+                base.OnEvent += value;
+                if (socket != null)
+                {
+                    ReceiveAsync();
+                }
+            }
+            remove
+            {
+                base.OnEvent -= value;
+            }
+        }
+
         public System.Net.Sockets.Socket socket { get; internal set; }
 
         public async ValueTask<int> SendAsync(ReadOnlyMemory<byte> payload, SocketFlags socketFlags = SocketFlags.None, CancellationToken cancelToken = default)
@@ -27,6 +43,14 @@ namespace Chesham.Sockets
             var socket = new System.Net.Sockets.Socket(SocketType.Stream, ProtocolType.Tcp);
             await socket.ConnectAsync(endPoint, cancellationToken);
             this.socket = socket;
+            if (hasEvents)
+            {
+                ReceiveAsync();
+            }
+        }
+
+        private void ReceiveAsync()
+        {
             var socketEventArgs = new SocketAsyncEventArgs
             {
                 UserToken = this,

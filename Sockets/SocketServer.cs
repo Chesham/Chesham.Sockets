@@ -56,20 +56,7 @@ namespace Chesham.Sockets
                 return;
             var acceptedSocket = e.AcceptSocket;
             e.AcceptSocket = null;
-            if (OnAccept(acceptedSocket, out var acceptedEvent))
-            {
-                var socketAsyncEvent = new SocketAsyncEventArgs
-                {
-                    UserToken = acceptedEvent.connection
-                };
-                socketAsyncEvent.Completed += OnSocketCompleted;
-                socketAsyncEvent.SetBuffer(new byte[bufferSize]);
-                if (!acceptedSocket.ReceiveAsync(socketAsyncEvent))
-                {
-                    OnSocketCompleted(sender, socketAsyncEvent);
-                }
-            }
-            else
+            if (!OnAccept(acceptedSocket, out var acceptedEvent))
             {
                 acceptedSocket.Dispose();
             }
